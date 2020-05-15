@@ -67,6 +67,8 @@ CTL_PROTO(thread_allocated)
 CTL_PROTO(thread_allocatedp)
 CTL_PROTO(thread_deallocated)
 CTL_PROTO(thread_deallocatedp)
+CTL_PROTO(thread_peak_read)
+CTL_PROTO(thread_peak_reset)
 CTL_PROTO(config_cache_oblivious)
 CTL_PROTO(config_debug)
 CTL_PROTO(config_fill)
@@ -275,6 +277,11 @@ static const ctl_named_node_t	thread_tcache_node[] = {
 	{NAME("flush"),		CTL(thread_tcache_flush)}
 };
 
+static const ctl_named_node_t	thread_peak_node[] = {
+	{NAME("read"),		CTL(thread_peak_read)},
+	{NAME("reset"),		CTL(thread_peak_reset)}
+};
+
 static const ctl_named_node_t	thread_prof_node[] = {
 	{NAME("name"),		CTL(thread_prof_name)},
 	{NAME("active"),	CTL(thread_prof_active)}
@@ -287,6 +294,7 @@ static const ctl_named_node_t	thread_node[] = {
 	{NAME("deallocated"),	CTL(thread_deallocated)},
 	{NAME("deallocatedp"),	CTL(thread_deallocatedp)},
 	{NAME("tcache"),	CHILD(named, thread_tcache)},
+	{NAME("peak"),		CHILD(named, thread_peak)},
 	{NAME("prof"),		CHILD(named, thread_prof)}
 };
 
@@ -1906,6 +1914,50 @@ thread_tcache_flush_ctl(tsd_t *tsd, const size_t *mib,
 label_return:
 	return ret;
 }
+
+static int
+thread_peak_read_ctl(tsd_t *tsd, const size_t *mib,
+    size_t miblen, void *oldp, size_t *oldlenp, void *newp,
+    size_t newlen) {
+	int ret;
+	if (!config_stats) {
+	    return ENOENT;
+	}
+
+	READONLY();
+
+	uint64_t alloc = tsd_thread_allocated_get(tsd);
+	uint64_t dalloc = tsd_thread_deallocated_get(tsd);
+	peak_t *peak = tsd_peakp_get(tsd);
+	peak_update(peak, alloc, dalloc);
+	uint64_t result = peak_max(peak);
+	READ(result, uint64_t);
+	ret = 0;
+label_return:
+	return ret;
+}
+
+static int
+thread_peak_reset_ctl(tsd_t *tsd, const size_t *mib,
+    size_t miblen, void *oldp, size_t *oldlenp, void *newp,
+    size_t newlen) {
+	int ret;
+	if (!config_stats) {
+	    return ENOENT;
+	}
+
+	READONLY();
+	WRITEONLY();
+
+	uint64_t alloc = tsd_thread_allocated_get(tsd);
+	uint64_t dalloc = tsd_thread_deallocated_get(tsd);
+	peak_t *peak = tsd_peakp_get(tsd);
+	peak_set_zero(peak, alloc, dalloc);
+	ret = 0;
+label_return:
+	return ret;
+}
+
 
 static int
 thread_prof_name_ctl(tsd_t *tsd, const size_t *mib,

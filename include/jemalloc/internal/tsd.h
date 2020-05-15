@@ -5,6 +5,7 @@
 #include "jemalloc/internal/assert.h"
 #include "jemalloc/internal/bin_types.h"
 #include "jemalloc/internal/jemalloc_internal_externs.h"
+#include "jemalloc/internal/peak.h"
 #include "jemalloc/internal/prof_types.h"
 #include "jemalloc/internal/ql.h"
 #include "jemalloc/internal/rtree_tsd.h"
@@ -69,6 +70,7 @@ typedef void (*test_callback_t)(int *);
     O(offset_state,		uint64_t,		uint64_t)	\
     O(thread_allocated,		uint64_t,		uint64_t)	\
     O(thread_deallocated,	uint64_t,		uint64_t)	\
+    O(peak,			peak_t,			peak_t)		\
     O(bytes_until_sample,	int64_t,		int64_t)	\
     O(prof_tdata,		prof_tdata_t *,		prof_tdata_t *)	\
     O(rtree_ctx,		rtree_ctx_t,		rtree_ctx_t)	\
@@ -89,6 +91,7 @@ typedef void (*test_callback_t)(int *);
     0,									\
     0,									\
     0,									\
+    PEAK_INITIALIZER,							\
     0,									\
     NULL,								\
     RTREE_CTX_ZERO_INITIALIZER,						\
